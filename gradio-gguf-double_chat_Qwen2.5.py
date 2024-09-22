@@ -1,10 +1,8 @@
 #1号と2号とユーザー3人で会話するやつ
-#import os
+import os
 #os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 from llama_cpp import Llama
-model="gemma-2-27b-it-Q4_K_M.gguf" #対象のモデルのパスを入力。
-#model="EZO-Humanities-9B-gemma-2-it-Q8_0.gguf"
-#model="EZO-Common-9B-gemma-2-it-Q8_0.gguf"
+model="Qwen2.5-32B-Instruct-Q4_K_M.gguf" #対象のモデルのパスを入力。
 llm = Llama(
       model_path=model,
       n_gpu_layers=-1, # Uncomment to use GPU acceleration
@@ -40,8 +38,9 @@ class pycolor:
 import gradio as gr
 import re
 
-role = "<start_of_turn>system\n\
-今からロールプレイを行いましょう。「1号」と「2号」という2人のキャラとしてロールプレイしてください。\n\
+role = "<|im_start|>system\n\
+あなたは多様なタスク、例えば文章の生成、翻訳、質問回答、要約、計算等を処理することができる日本語の大規模言語モデルです。\n\
+その能力で今から「1号」と「2号」という2人のキャラとしてロールプレイしてください。\n\
 あなたがなりきる「1号」と「2号」のキャラクターの設定は以下の通りです。\n\
 \n\
 --------1号と2号の制約条件--------\n\
@@ -80,7 +79,7 @@ role = "<start_of_turn>system\n\
 1号「（1号の回答内容）」\n\
 2号「（2号の回答内容）」\n\
 \n\
-それでは、上記の設定をもとにして「1号」と「2号」として会話してください。<end_of_turn>"
+それでは、上記の設定をもとにして「1号」と「2号」として会話してください。<|im_end|>"
 history = ""
 output_history =""
 # AI達に質問する関数
@@ -89,14 +88,14 @@ def complement(role,prompt,turn_config):
    role += "\n"
    if prompt !="":
         prompt_gemma2 = (role+history + "USER: "+"ユーザー「"+prompt+"」"+"\nASSISTANT: ")\
-         .replace("\nASSISTANT: ", "<end_of_turn>\n<start_of_turn>model\n").replace("<|endoftext|>", "<end_of_turn>").replace("USER: ", "<start_of_turn>user\n")
+         .replace("\nASSISTANT: ", "<|im_end|>\n<|im_start|>assistant\n").replace("<|endoftext|>", "<|im_end|>").replace("USER: ", "<|im_start|>user\n")
         output = llm(
                prompt=prompt_gemma2,  # 元々calm2-7b-chat用に作ったプログラムなのでここで整形。
                max_tokens=1024,
                temperature = 0.8,
                top_p=0.95, 
                top_k=40, 
-               stop=["※","。\n【","！\n【","？\n【","<start_of_turn>model","<end_of_turn>","<start_of_turn>user","prompt_tokens"] # Stop generating just before the model would generate a new question
+               stop=["※","。\n【","！\n【","？\n【","<|im_start|>assistant","<|im_end|>","<|im_start|>user","prompt_tokens"] # Stop generating just before the model would generate a new question
         )
         output= output["choices"][0]["text"]
         output =output.replace("\\n", "\n").replace("\\n", "\n").replace("\\u3000", "\u3000")\
@@ -109,29 +108,29 @@ def complement(role,prompt,turn_config):
         turn = re.split(r'(?=USER: )', history)
         del turn[0:1]
         output_history =''.join(turn)
-        output_history = output_history.replace("<|endoftext|>", "<end_of_turn>")
-        output_history = (output_history.replace("USER: ", '<start_of_turn>user\n').replace("\nASSISTANT: ", "<end_of_turn>\n<start_of_turn>model\n"))
+        output_history = output_history.replace("<|endoftext|>", "<|im_end|>")
+        output_history = (output_history.replace("USER: ", '<|im_start|>user\n').replace("\nASSISTANT: ", "<|im_end|>\n<|im_start|>assistant\n"))
         turn_count = len(turn)
         if turn_count > turn_config:
            del turn[0:turn_count - int(turn_config)]
            history =''.join(turn)
            output_history =''.join(turn)
-           output_history = output_history.replace("<|endoftext|>", "<end_of_turn>")
-           output_history = (output_history.replace("USER: ", '<start_of_turn>user\n').replace("\nASSISTANT: ", "<end_of_turn>\n<start_of_turn>model\n"))
+           output_history = output_history.replace("<|endoftext|>", "<|im_end|>")
+           output_history = (output_history.replace("USER: ", '<|im_start|>user\n').replace("\nASSISTANT: ", "<|im_end|>\n<|im_start|>assistant\n"))
            turn_count = len(turn)
-        print((output_history).replace("1号「", pycolor.BOLD+pycolor.RED +"1号「").replace("2号「", pycolor.BOLD+pycolor.BLUE +"2号「").replace("<end_of_turn>", pycolor.RESET+"<end_of_turn>").replace("<start_of_turn>user", pycolor.RESET+"<start_of_turn>user"))
+        print((output_history).replace("1号「", pycolor.BOLD+pycolor.RED +"1号「").replace("2号「", pycolor.BOLD+pycolor.BLUE +"2号「").replace("<|im_end|>", pycolor.RESET+"<|im_end|>").replace("<|im_start|>user", pycolor.RESET+"<|im_start|>user"))
    if prompt =="":
       if history =="":
          output=""
       if history !="":
-         output_history = (output_history.replace('<start_of_turn>user\n', "USER: ").replace("<end_of_turn>\n<start_of_turn>model\n", "\nASSISTANT: ").replace("<end_of_turn>","<|endoftext|>" ))
+         output_history = (output_history.replace('<|im_start|>user\n', "USER: ").replace("<|im_end|>\n<|im_start|>assistant\n", "\nASSISTANT: ").replace("<|im_end|>","<|endoftext|>" ))
          output=re.split(r'(?=USER: |ASSISTANT: )', output_history)
          output = (output[len(output)-1]).replace("ASSISTANT: ","").replace("<|endoftext|>", '')
       turn = re.split(r'(?=USER: )', history)
       del turn[0:1]
       output_history =''.join(turn)
-      output_history = output_history.replace("<|endoftext|>", "<end_of_turn>")
-      output_history = (output_history.replace("USER: ", '<start_of_turn>user\n').replace("\nASSISTANT: ", "<end_of_turn>\n<start_of_turn>model\n"))
+      output_history = output_history.replace("<|endoftext|>", "<|im_end|>")
+      output_history = (output_history.replace("USER: ", '<|im_start|>user\n').replace("\nASSISTANT: ", "<|im_end|>\n<|im_start|>assistant\n"))
       turn_count = len(turn)
    return output, output_history
 
@@ -162,9 +161,9 @@ def undo():
     del turn[len(turn)-1:len(turn)]
     history =''.join(turn)
     output_history =''.join(turn)
-    output_history = output_history.replace("<|endoftext|>", "<end_of_turn>")
-    output_history = (output_history.replace("USER: ", '<start_of_turn>user\n').replace("\nASSISTANT: ", "<end_of_turn>\n<start_of_turn>model\n"))
-    print((output_history).replace("1号「", pycolor.BOLD+pycolor.RED +"1号「").replace("2号「", pycolor.BOLD+pycolor.BLUE +"2号「").replace("<end_of_turn>", pycolor.RESET+"<end_of_turn>").replace("<start_of_turn>user", pycolor.RESET+"<start_of_turn>user"))
+    output_history = output_history.replace("<|endoftext|>", "<|im_end|>")
+    output_history = (output_history.replace("USER: ", '<|im_start|>user\n').replace("\nASSISTANT: ", "<|im_end|>\n<|im_start|>assistant\n"))
+    print((output_history).replace("1号「", pycolor.BOLD+pycolor.RED +"1号「").replace("2号「", pycolor.BOLD+pycolor.BLUE +"2号「").replace("<|im_end|>", pycolor.RESET+"<|im_end|>").replace("<|im_start|>user", pycolor.RESET+"<|im_start|>user"))
     return prompt, output,output_history
     
 # Blocksの作成
