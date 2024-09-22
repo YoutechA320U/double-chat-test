@@ -7,10 +7,11 @@
 Qwen2.5はAI同士だけで会話してくれることがそこそこあります。
 
 ![Picture](https://github.com/YoutechA320U/double-chat-test/blob/master/image1.png "サンプル") 
+![Picture](https://github.com/YoutechA320U/double-chat-test/blob/master/image2.png "サンプル") 
 
 UIは基になったリポジトリと同じですがターミナルには色分けされて出力されます。
 
-![Picture](https://github.com/YoutechA320U/double-chat-test/blob/master/image2.png "UI") 
+![Picture](https://github.com/YoutechA320U/double-chat-test/blob/master/image3.png "UI") 
 
 ## 履歴
     [2024/09/17] - 初回リリース
